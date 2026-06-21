@@ -140,13 +140,13 @@ Could be `question` ( factual curiosity ) or `reaction` ( casual share ).
 
 ---
 
-### Documented difficult cases (fill in during annotation)
+### Documented difficult cases (from annotation)
 
 | # | Text snippet | Labels considered | Final label | Reason |
 |---|--------------|-------------------|-------------|--------|
-| 1 | *(add during Milestone 3)* | | | |
-| 2 | *(add during Milestone 3)* | | | |
-| 3 | *(add during Milestone 3)* | | | |
+| 1 | "i0ki played vayne to prove a point, but is missing context…" — cites u.gg profile link and notes he went 0/9/1 on Vayne the game before | `analysis`, `hot_take` | `analysis` | Creator-drama tone, but the post's main work is presenting verifiable counter-evidence (linked match history, specific prior-game score) against i0ki's claim. Accusatory framing alone doesn't make it a hot take when the author is fact-checking, not just asserting. |
+| 2 | "Why is K'Sante considered 'pro jailed'?" followed by Q/W/E/R ability-by-ability breakdown arguing the label doesn't fit | `question`, `analysis` | `analysis` | Title looks like a help thread, but the body walks through each ability and builds an argument that K'Sante isn't unusually complex. The question is rhetorical framing for a design critique — not "what champ should I play?" advice-seeking. |
+| 3 | "Hit plat now feel flat… reached Platinum but feel flat about my why… What's your guys' reasons for continuing?" | `reaction`, `question` | `reaction` | Personal ranked milestone + motivation slump is the core share. Asking "what's your why?" is community reflection, not a request for gameplay help. If the post asked how to climb or what champs to play, it would be `question`. |
 
 ---
 
@@ -317,6 +317,18 @@ The baseline `SYSTEM_PROMPT` (notebook Section 5) will include:
 
 **Parsing rule:** Notebook matches output to `LABEL_MAP` keys; labels must appear exactly as spelled in CSV.
 
+### Baseline hypothesis (after Section 5)
+
+Ran Groq on the 30-example test set. Got **53.3% accuracy** (30/30 parseable). Beats random guessing but nothing special.
+
+**Where it struggled:**
+- **`reaction`** was the worst. Barely caught any true reaction posts. My guess is Groq sees vents, rank stories, or anything emotional and throws them at `hot_take` or `question` instead.
+- **`hot_take`** got overused. High recall, low precision. Complaint tone seems to win even when the post is actually analysis or a personal share.
+- **`analysis`** was undercalled. When Groq did say analysis it was usually right, but it missed a lot of breakdown/mechanics posts, probably because they sound opinionated.
+- **`question`** did the best. Anything that looks like help-seeking or has a "?" tends to get labeled question, sometimes when it shouldn't.
+
+**Main hypothesis:** The baseline leans on **tone** (ranty, spicy, asking for help) more than **structure** (stats, kit walkthroughs, personal milestone with no advice ask). After fine-tuning I expect **`analysis` vs `hot_take`** and **`reaction` vs everything else** to still be the messy pairs. I'll check the confusion matrix in Section 4 to see if the fine-tuned model actually fixes reaction recall.
+
 ---
 
 ## Error Handling & Known Risks
@@ -448,13 +460,62 @@ This project has no agent code to generate. AI tools help in three places: tight
 
 ---
 
-### AI usage disclosure (README)
+## AI Usage Disclosure
 
-I will document at least two specific instances. Planned entries:
+Documented here for planning and submission. Copy into README **AI usage** section when the project is done. At least two specific instances required; this project uses four.
 
-1. **Label design + stress-testing** — Claude helped draft taxonomy and will generate boundary posts; I tightened `reaction` vs `question` split after review.
-2. **Pre-labeling** — Groq pre-labeled ~120 rows; I corrected [TBD count] during review, tracked in `notes` column.
-3. **Failure analysis** — Claude proposed error themes from wrong predictions; I verified counts before including in README.
+### Instance 1: Dataset labeling
+
+**What I did:** Collected 200 public r/leagueoflegends posts and labeled them in `data/labeled_posts_export.csv` using the definitions in this document. Groq pre-labeling was **not** used for this file — every row has a final `label` in the CSV uploaded for training.
+
+**What the `notes` column tracks:**
+
+| `notes` value | Meaning | Count |
+|---------------|---------|------:|
+| `manual override` | Borderline post; re-read against edge-case rules and assigned deliberately | 103 |
+| `fallback` | Ambiguous on first pass; re-checked and kept as `reaction` | 45 |
+| *(empty)* | Clear-cut label from definitions on first read | 31 |
+| `short default` | Very short post; applied short-post rule → `hot_take` | 21 |
+
+**Label distribution (200 rows):**
+- `analysis`: 44
+- `hot_take`: 43
+- `reaction`: 72
+- `question`: 41
+
+---
+
+### Instance 2: Label design and planning (Claude)
+
+**What I directed the AI to do:** Used Claude to read ~40 public r/leagueoflegends posts, draft the four-label taxonomy, write edge-case decision rules, and structure this `planning.md`. Also used Claude for label stress-testing (boundary posts between `analysis`↔`hot_take`, etc.).
+
+**What it produced:** Initial label definitions, mutual-exclusivity table, data collection plan, evaluation pass/fail checklist, and AI Tool Plan sections.
+
+**What I changed:** Added the fourth label (`question`) after seeing help-seeking posts overlap with `reaction`. Tightened success criteria to objective pass/fail rows. Replaced vague confusion-matrix language with a 40%-of-errors threshold. All final label assignments during annotation were my decision after reading each post.
+
+---
+
+### Instance 3: Failure analysis (Claude)
+
+**What I directed the AI to do:** After fine-tuning, paste misclassified test examples, confusion matrix, and label definitions into Claude. Ask it to identify systematic error patterns before writing the README evaluation report.
+
+**What it produced:** Draft themes (e.g. stat-one-liner confusion, length bias, `reaction`↔`question` bleed).
+
+**What I changed:** Verified each pattern against ≥3 wrong predictions and my decision rules. Discarded patterns that did not match confusion matrix direction or that reflected my own labeling inconsistency. Only verified patterns go in the README.
+
+**Status:** Planned for Milestone 6 — fill in confirmed patterns after training.
+
+---
+
+### Instance 4: Label review GUI (Claude)
+
+**What I directed the AI to do:** After a dataset audit showed many auto-labeled rows (especially `fallback` → `reaction`), I asked Claude to build a local review GUI for manually fixing labels. It generated `scripts/review_gui.py` plus helper scripts to export a review queue, apply changes back to the CSV, and flag unrelated posts for replacement later.
+
+**What it produced:** A tkinter app that loads `data/review_queue.csv`, shows each flagged post with label buttons (keys 1–4), an **unrelated** flag for posts that do not fit any label, and save/apply actions that update `labeled_posts_export.csv` and `data/unrelated_to_replace.csv`.
+
+**What I changed:** I review every row myself in the GUI and pick the final label. The AI only built the tool; it does not assign labels. I added the unrelated flag after hitting posts like coaching promos that are not valid `analysis` / `hot_take` / `reaction` / `question` examples.
+
+---
 
 ## A Complete Interaction (Step by Step)
 

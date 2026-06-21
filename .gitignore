@@ -3,3 +3,16 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# Local training artifacts
+takemeter-model/
+evaluation_run.log
+
+# Working copies (regenerate from scripts)
+data/review_queue*.csv
+data/*_saved.csv
+data/unrelated_to_replace.csv
+
+# Legacy collection intermediates
+data/reddit_raw.json
+data/reddit_pages/

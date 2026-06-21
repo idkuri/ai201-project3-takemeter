@@ -1,0 +1,76 @@
+{
+  "platform": "google_colab",
+  "gpu": "Tesla T4",
+  "baseline_accuracy": 0.5667,
+  "baseline_macro_f1": 0.56,
+  "finetuned_accuracy": 0.6,
+  "improvement": 0.0333,
+  "macro_f1_finetuned": 0.6,
+  "baseline_parseable": 30,
+  "baseline_unparseable": 0,
+  "test_set_size": 30,
+  "val_set_size": 30,
+  "train_set_size": 140,
+  "epochs": 5,
+  "learning_rate": 0.0001,
+  "batch_size": 16,
+  "label_map": {
+    "analysis": 0,
+    "hot_take": 1,
+    "reaction": 2,
+    "question": 3
+  },
+  "model": "distilbert-base-uncased",
+  "validation_history": [
+    {
+      "epoch": 1,
+      "train_loss": null,
+      "eval_loss": 1.358742,
+      "eval_accuracy": 0.3
+    },
+    {
+      "epoch": 2,
+      "train_loss": 1.373656,
+      "eval_loss": 1.297567,
+      "eval_accuracy": 0.266667
+    },
+    {
+      "epoch": 3,
+      "train_loss": 1.3073,
+      "eval_loss": 1.111065,
+      "eval_accuracy": 0.666667
+    },
+    {
+      "epoch": 4,
+      "train_loss": 1.147837,
+      "eval_loss": 0.977414,
+      "eval_accuracy": 0.666667
+    },
+    {
+      "epoch": 5,
+      "train_loss": 0.875231,
+      "eval_loss": 0.793787,
+      "eval_accuracy": 0.733333
+    }
+  ],
+  "best_val_accuracy": 0.733333,
+  "best_val_epoch": 5,
+  "classification_report_finetuned": {
+    "analysis": {"precision": 0.5, "recall": 0.71, "f1-score": 0.59, "support": 7},
+    "hot_take": {"precision": 0.45, "recall": 0.71, "f1-score": 0.56, "support": 7},
+    "reaction": {"precision": 0.83, "recall": 0.62, "f1-score": 0.71, "support": 8},
+    "question": {"precision": 1.0, "recall": 0.38, "f1-score": 0.55, "support": 8},
+    "accuracy": 0.6,
+    "macro avg": {"precision": 0.7, "recall": 0.61, "f1-score": 0.6, "support": 30},
+    "weighted avg": {"precision": 0.71, "recall": 0.6, "f1-score": 0.6, "support": 30}
+  },
+  "classification_report_baseline": {
+    "analysis": {"precision": 0.5, "recall": 0.57, "f1-score": 0.5, "support": 7},
+    "hot_take": {"precision": 0.5, "recall": 0.43, "f1-score": 0.5, "support": 7},
+    "reaction": {"precision": 0.53, "recall": 0.5, "f1-score": 0.53, "support": 8},
+    "question": {"precision": 0.71, "recall": 0.75, "f1-score": 0.71, "support": 8},
+    "accuracy": 0.5667,
+    "macro avg": {"precision": 0.56, "recall": 0.56, "f1-score": 0.56, "support": 30},
+    "weighted avg": {"precision": 0.57, "recall": 0.57, "f1-score": 0.56, "support": 30}
+  }
+}

@@ -282,7 +282,7 @@ flowchart TD
     Split["Train / val / test split<br/>70% / 15% / 15% stratified"]
     Tokenize["Tokenize with distilbert-base-uncased<br/>max_length=256"]
     Baseline["Groq zero-shot baseline<br/>llama-3.3-70b-versatile<br/>SYSTEM_PROMPT with label defs"]
-    Finetune["Fine-tune DistilBERT<br/>3 epochs · lr 2e-5 · batch 16"]
+    Finetune["Fine-tune DistilBERT<br/>5 epochs · lr 1e-4 · batch 16"]
     EvalFT["Test set: accuracy · F1 · confusion matrix"]
     EvalBL["Test set: same metrics"]
     Compare["evaluation_results.json<br/>Side-by-side in README"]
@@ -301,7 +301,21 @@ flowchart TD
 
 **Notebook sections:** 1 Load CSV + label map → 2 Split + tokenize → 3 Fine-tune → 4 Evaluate fine-tuned → 5 Groq baseline → 6 Compare + export.
 
-**Hyperparameter defaults (note in README if changed):** `distilbert-base-uncased`, 3 epochs, learning rate `2e-5`, batch size 16, max sequence length 256.
+**Hyperparameter defaults (final):** `distilbert-base-uncased`, **5 epochs**, learning rate **`1e-4`**, batch size 16, max sequence length 256. Trained on **Google Colab T4 GPU**. Best val accuracy **73.3%** at epoch 5. Export via notebook Section 6 → `evaluation_results.json`.
+
+### Final evaluation results (`evaluation_results.json`, Colab export)
+
+| Metric | Groq baseline | Fine-tuned |
+|--------|---------------|------------|
+| Test accuracy | **0.567** (17/30) | **0.467** (14/30) |
+| Macro F1 | **0.560** | 0.440 |
+| vs baseline | — | **−0.100** |
+| Parseable baseline responses | 30/30 | — |
+| Val accuracy (best epoch) | — | **0.733** (epoch 5, Colab T4) |
+
+**Per-class F1 (fine-tuned):** `analysis` 0.53 · `hot_take` 0.20 · `reaction` **0.59** · `question` 0.44
+
+**Pass/fail verdict (5-row checklist):** **Fail** — row 1 (fine-tuned ≤ baseline), row 2 (macro F1 0.44 < 0.60), row 3 (`hot_take` F1 0.20 < 0.45). Rows 4–5 pass (100% parseable; largest error pair `hot_take`→`question` = 18.8% of errors).
 
 ---
 
@@ -319,15 +333,15 @@ The baseline `SYSTEM_PROMPT` (notebook Section 5) will include:
 
 ### Baseline hypothesis (after Section 5)
 
-Ran Groq on the 30-example test set. Got **53.3% accuracy** (30/30 parseable). Beats random guessing but nothing special.
+Ran Groq on the 30-example test set. Got **56.7% accuracy** (30/30 parseable). Beats random guessing but nothing special.
 
-**Where it struggled:**
-- **`reaction`** was the worst. Barely caught any true reaction posts. My guess is Groq sees vents, rank stories, or anything emotional and throws them at `hot_take` or `question` instead.
-- **`hot_take`** got overused. High recall, low precision. Complaint tone seems to win even when the post is actually analysis or a personal share.
-- **`analysis`** was undercalled. When Groq did say analysis it was usually right, but it missed a lot of breakdown/mechanics posts, probably because they sound opinionated.
-- **`question`** did the best. Anything that looks like help-seeking or has a "?" tends to get labeled question, sometimes when it shouldn't.
+**Where it struggled (final run):**
+- **`reaction`** recall was weak (4/8). Personal milestone and vent posts still bleed into `analysis` or `question`.
+- **`hot_take`** precision was moderate (0.60) but recall low (43%) — complaint tone is inconsistent.
+- **`analysis`** was undercalled when posts sounded opinionated.
+- **`question`** did the best (F1 0.71). Help-seeking framing dominates Groq's predictions.
 
-**Main hypothesis:** The baseline leans on **tone** (ranty, spicy, asking for help) more than **structure** (stats, kit walkthroughs, personal milestone with no advice ask). After fine-tuning I expect **`analysis` vs `hot_take`** and **`reaction` vs everything else** to still be the messy pairs. I'll check the confusion matrix in Section 4 to see if the fine-tuned model actually fixes reaction recall.
+**Main hypothesis (confirmed):** The baseline leans on **tone** more than **structure**. After fine-tuning on Colab, **`analysis`** and **`reaction`** F1 beat Groq, but overall test accuracy (**46.7%**) still trails Groq (**56.7%**). Val accuracy reached **73.3%** with `1e-4` / 5 epochs. **`hot_take`** remains the hardest class for both models.
 
 ---
 
@@ -354,7 +368,7 @@ Ran Groq on the 30-example test set. Got **53.3% accuracy** (30/30 parseable). B
 |---------|--------|------|
 | Inter-annotator reliability (30+ examples) | Not started | Ask one friend to label 35 rows from a blind export; compare with Cohen's κ |
 | Confidence calibration | Not started | Bin fine-tuned softmax scores; plot accuracy per bin in README |
-| Error pattern analysis | Not started | Cluster misclassifications by length, sarcasm markers, label pair |
+| Error pattern analysis | Done | 15 wrong preds analyzed; largest pair `hot_take`→`question` (20% of errors) |
 | Deployed interface | Not started | Simple Gradio script: text in → label + confidence out |
 
 ---
@@ -462,26 +476,19 @@ This project has no agent code to generate. AI tools help in three places: tight
 
 ## AI Usage Disclosure
 
-Documented here for planning and submission. Copy into README **AI usage** section when the project is done. At least two specific instances required; this project uses four.
+Documented here for planning and submission. Copy into README **AI usage** section when the project is done. At least two specific instances required; this project uses five.
 
 ### Instance 1: Dataset labeling
 
-**What I did:** Collected 200 public r/leagueoflegends posts and labeled them in `data/labeled_posts_export.csv` using the definitions in this document. Groq pre-labeling was **not** used for this file — every row has a final `label` in the CSV uploaded for training.
+**What I did:** Collected 200 public r/leagueoflegends posts and labeled them in `data/labeled_posts_export.csv` using the definitions in this document. Every row was reviewed in `scripts/review_gui.py`; final labels are human decisions.
 
-**What the `notes` column tracks:**
+**What the `notes` column tracks:** browser collection tags, rebalance replacement notes, and manual override reasons (see README for current distribution).
 
-| `notes` value | Meaning | Count |
-|---------------|---------|------:|
-| `manual override` | Borderline post; re-read against edge-case rules and assigned deliberately | 103 |
-| `fallback` | Ambiguous on first pass; re-checked and kept as `reaction` | 45 |
-| *(empty)* | Clear-cut label from definitions on first read | 31 |
-| `short default` | Very short post; applied short-post rule → `hot_take` | 21 |
-
-**Label distribution (200 rows):**
-- `analysis`: 44
-- `hot_take`: 43
-- `reaction`: 72
-- `question`: 41
+**Label distribution (200 rows, after rebalance + GUI review):**
+- `analysis`: 45
+- `hot_take`: 49
+- `reaction`: 50
+- `question`: 56
 
 ---
 
@@ -499,11 +506,11 @@ Documented here for planning and submission. Copy into README **AI usage** secti
 
 **What I directed the AI to do:** After fine-tuning, paste misclassified test examples, confusion matrix, and label definitions into Claude. Ask it to identify systematic error patterns before writing the README evaluation report.
 
-**What it produced:** Draft themes (e.g. stat-one-liner confusion, length bias, `reaction`↔`question` bleed).
+**What it produced:** Six draft themes: `hot_take`↔`question`, `hot_take`↔`analysis`, `analysis`↔`question`, `question`↔`hot_take`, `question`↔`reaction`, low-confidence boundaries; plus three rejected themes (short-post bias, sarcasm, reaction-as-worst-class).
 
-**What I changed:** Verified each pattern against ≥3 wrong predictions and my decision rules. Discarded patterns that did not match confusion matrix direction or that reflected my own labeling inconsistency. Only verified patterns go in the README.
+**What I changed:** Verified each theme against all 16 wrong preds and the confusion matrix. Discarded short-post and sarcasm patterns (counterexamples: long essays #10, #15). Corrected stale "question collapse" claim from the earlier `2e-5` run. Kept six verified patterns in README **AI-assisted error pattern analysis**; three deep dives use numbered wrong preds (#3, #9, #11).
 
-**Status:** Planned for Milestone 6 — fill in confirmed patterns after training.
+**Status:** Completed — see README Evaluation section.
 
 ---
 
@@ -514,6 +521,16 @@ Documented here for planning and submission. Copy into README **AI usage** secti
 **What it produced:** A tkinter app that loads `data/review_queue.csv`, shows each flagged post with label buttons (keys 1–4), an **unrelated** flag for posts that do not fit any label, and save/apply actions that update `labeled_posts_export.csv` and `data/unrelated_to_replace.csv`.
 
 **What I changed:** I review every row myself in the GUI and pick the final label. The AI only built the tool; it does not assign labels. I added the unrelated flag after hitting posts like coaching promos that are not valid `analysis` / `hot_take` / `reaction` / `question` examples.
+
+---
+
+### Instance 5: Dataset rebalancing script (Claude)
+
+**What I directed the AI to do:** After labeling, the dataset was skewed toward `question` (~54%). I asked Claude to build a script to fix class imbalance by swapping overrepresented rows for new r/leagueoflegends posts collected via the browser (Reddit blocks server-side scraping). It consolidated this into `scripts/rebalance_dataset.py` with subcommands for status, importing a browser post pool, previewing candidates, running auto-swap, replacing specific rows, and exporting a review queue.
+
+**What it produced:** `scripts/rebalance_dataset.py`, `data/reddit_pool/` for browser JSON imports, and workflow hooks to `scripts/review_gui.py` for confirming swapped rows.
+
+**What I changed:** I manually confirmed labels on replacement rows in the review GUI. The script picks candidate posts using heuristics; I decide the final label and reject bad swaps (promos, unrelated posts). I also renamed the finished dataset to `data/labeled_posts_export.csv` for Colab upload.
 
 ---
 
@@ -548,5 +565,5 @@ TakeMeter does not run live at query time during the project — this walkthroug
 - [x] Data collection sources and per-label targets set
 - [x] Evaluation metrics and success thresholds defined
 - [x] AI Tool Plan covers stress-testing, annotation, and failure analysis
-- [ ] 3 difficult annotation cases filled in table after labeling
+- [x] 3 difficult annotation cases filled in table after labeling
 - [ ] Stretch feature section updated if attempting extra credit

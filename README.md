@@ -8,6 +8,12 @@ Fine-tuned **DistilBERT** classifier for [r/leagueoflegends](https://www.reddit.
 
 ---
 
+## Demo Video
+
+[TakeMeter demo — Colab classifications & evaluation walkthrough](https://jam.dev/c/cfcea79d-ee87-47ea-a0f3-7467e7eb09e4)
+
+---
+
 ## Labels
 
 Four mutually exclusive labels based on **text content only** (not upvotes or flair).
@@ -311,7 +317,3 @@ python scripts/run_evaluation.py
 **Colab (primary):** Upload `labeled_posts_export.csv`, set `GROQ_API_KEY` in the secrets/env cell, run all sections (1–6), download `evaluation_results.json` and `confusion_matrix.png`.
 
 ---
-
-## Demo Video
-
-[TakeMeter demo — Colab classifications & evaluation walkthrough](https://jam.dev/c/cfcea79d-ee87-47ea-a0f3-7467e7eb09e4)
